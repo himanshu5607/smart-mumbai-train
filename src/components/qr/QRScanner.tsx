@@ -120,11 +120,8 @@ export function QRScanner({ onClose, onDone, onSuccess }: QRScannerProps) {
 
   const handleDone = async () => {
     void safeStopScanner();
-    if (onDone) {
-      onDone();
-    } else {
-      onClose();
-    }
+    onClose();
+    onDone?.();
   };
 
   const handleScanAgain = async () => {
