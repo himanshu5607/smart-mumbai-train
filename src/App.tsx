@@ -44,7 +44,9 @@ function AppContent() {
   const handleDashboardScroll = () => scrollToSection('#dashboard');
   const handleScannerDone = () => {
     setShowQRScanner(false);
-    handleDashboardScroll();
+    setTimeout(() => {
+      handleDashboardScroll();
+    }, 120);
   };
 
   useEffect(() => {

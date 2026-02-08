@@ -119,9 +119,20 @@ export function QRScanner({ onClose, onDone, onSuccess }: QRScannerProps) {
     hasResultRef.current = false;
     
     try {
+      setIsScanning(false);
       if (scannerRef.current) {
         await scannerRef.current.stop().catch(() => {});
         await scannerRef.current.clear?.().catch?.(() => {});
+      }
+
+      // Wait for the QR reader element to re-render
+      for (let i = 0; i < 10; i += 1) {
+        if (document.getElementById('qr-reader')) break;
+        await new Promise((resolve) => setTimeout(resolve, 60));
+      }
+
+      if (!document.getElementById('qr-reader')) {
+        throw new Error('QR reader not ready');
       }
 
       const freshScanner = new Html5Qrcode('qr-reader');
