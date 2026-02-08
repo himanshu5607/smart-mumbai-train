@@ -12,6 +12,7 @@ interface QRScannerProps {
 export function QRScanner({ onClose, onSuccess }: QRScannerProps) {
   const scannerRef = useRef<Html5Qrcode | null>(null);
   const [isScanning, setIsScanning] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
   const [scanResult, setScanResult] = useState<{ valid: boolean; ticket?: Ticket; message: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [manualCode, setManualCode] = useState('');
@@ -39,6 +40,7 @@ export function QRScanner({ onClose, onSuccess }: QRScannerProps) {
             // Stop scanning after successful read
             await scanner.stop();
             setIsScanning(false);
+            setIsProcessing(true);
 
             // Validate ticket
             try {
@@ -47,6 +49,8 @@ export function QRScanner({ onClose, onSuccess }: QRScannerProps) {
               onSuccess?.(result);
             } catch (err) {
               setError('Failed to validate ticket');
+            } finally {
+              setIsProcessing(false);
             }
           },
           () => {
@@ -79,6 +83,7 @@ export function QRScanner({ onClose, onSuccess }: QRScannerProps) {
     setScanResult(null);
     setError(null);
     setManualCode('');
+    setIsProcessing(false);
     
     if (scannerRef.current) {
       try {
@@ -92,6 +97,7 @@ export function QRScanner({ onClose, onSuccess }: QRScannerProps) {
           async (decodedText) => {
             await scannerRef.current?.stop();
             setIsScanning(false);
+            setIsProcessing(true);
 
             try {
               const result = await ticketService.validateTicket(decodedText);
@@ -99,6 +105,8 @@ export function QRScanner({ onClose, onSuccess }: QRScannerProps) {
               onSuccess?.(result);
             } catch (err) {
               setError('Failed to validate ticket');
+            } finally {
+              setIsProcessing(false);
             }
           },
           () => {}
@@ -114,12 +122,15 @@ export function QRScanner({ onClose, onSuccess }: QRScannerProps) {
     const value = manualCode.trim();
     if (!value) return;
     setError(null);
+    setIsProcessing(true);
     try {
       const result = await ticketService.validateTicket(value);
       setScanResult(result);
       onSuccess?.(result);
     } catch {
       setError('Failed to validate ticket');
+    } finally {
+      setIsProcessing(false);
     }
   };
 
@@ -141,7 +152,7 @@ export function QRScanner({ onClose, onSuccess }: QRScannerProps) {
 
       {/* Scanner or Result */}
       <div className="w-full max-w-2xl">
-        {!scanResult && !error && (
+        {!scanResult && !error && !isProcessing && (
           <>
             {/* Scanner Viewport */}
             <div 
@@ -186,6 +197,19 @@ export function QRScanner({ onClose, onSuccess }: QRScannerProps) {
           </>
         )}
 
+        {/* Processing */}
+        {isProcessing && !scanResult && !error && (
+          <div className="bg-[#0B0F1C] rounded-2xl p-6 text-center">
+            <div className="w-12 h-12 rounded-full border-2 border-[#00F0FF] border-t-transparent animate-spin mx-auto mb-4" />
+            <h3 className="text-lg font-semibold text-[#F4F6FF] mb-2">
+              Confirming ticket...
+            </h3>
+            <p className="text-[#A7B0C8] text-sm">
+              Please wait while we validate this ticket.
+            </p>
+          </div>
+        )}
+
         {/* Scan Result */}
         {scanResult && (
           <div className="bg-[#0B0F1C] rounded-2xl p-6 text-center">
@@ -193,7 +217,7 @@ export function QRScanner({ onClose, onSuccess }: QRScannerProps) {
               <>
                 <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-4" />
                 <h3 className="text-xl font-bold text-green-500 mb-2">
-                  Ticket Valid
+                  Ticket Confirmed
                 </h3>
                 <p className="text-[#A7B0C8] mb-4">{scanResult.message}</p>
                 {scanResult.ticket && (
@@ -220,6 +244,12 @@ export function QRScanner({ onClose, onSuccess }: QRScannerProps) {
               className="mt-6 w-full btn-primary"
             >
               Scan Another
+            </button>
+            <button
+              onClick={onClose}
+              className="mt-3 w-full btn-outline"
+            >
+              Done
             </button>
           </div>
         )}
