@@ -32,6 +32,13 @@ export function QRScanner({ onClose, onDone, onSuccess }: QRScannerProps) {
     aspectRatio: 1.0,
   });
 
+  const scrollToDashboard = () => {
+    const dashboard = document.querySelector('#dashboard');
+    if (dashboard) {
+      dashboard.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
+
   const safeStopScanner = useCallback(async () => {
     const scanner = scannerRef.current;
     if (!scanner) return;
@@ -121,7 +128,11 @@ export function QRScanner({ onClose, onDone, onSuccess }: QRScannerProps) {
   const handleDone = async () => {
     void safeStopScanner();
     onClose();
-    onDone?.();
+    if (onDone) {
+      onDone();
+    } else {
+      scrollToDashboard();
+    }
   };
 
   const handleScanAgain = async () => {

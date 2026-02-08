@@ -43,7 +43,6 @@ function AppContent() {
   const handleGetAppClick = () => scrollToSection('#cta');
   const handleDashboardScroll = () => scrollToSection('#dashboard');
   const handleScannerDone = () => {
-    setShowQRScanner(false);
     setTimeout(() => {
       const dashboard = document.querySelector('#dashboard') as HTMLElement | null;
       if (dashboard) {
