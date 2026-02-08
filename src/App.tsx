@@ -45,8 +45,15 @@ function AppContent() {
   const handleScannerDone = () => {
     setShowQRScanner(false);
     setTimeout(() => {
-      handleDashboardScroll();
-    }, 120);
+      const dashboard = document.querySelector('#dashboard') as HTMLElement | null;
+      if (dashboard) {
+        const top = dashboard.offsetTop;
+        window.scrollTo({ top, behavior: 'smooth' });
+      } else {
+        handleDashboardScroll();
+      }
+      ScrollTrigger.refresh();
+    }, 250);
   };
 
   useEffect(() => {
