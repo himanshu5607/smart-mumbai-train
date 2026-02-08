@@ -10,7 +10,7 @@ interface QRScannerProps {
   onSuccess?: (result: { valid: boolean; ticket?: Ticket; message: string }) => void;
 }
 
-export function QRScanner({ onClose, onDone, onSuccess }: QRScannerProps) {
+export function QRScanner({ onClose, onSuccess }: QRScannerProps) {
   const scannerRef = useRef<Html5Qrcode | null>(null);
   const onSuccessRef = useRef(onSuccess);
   const hasResultRef = useRef(false);
@@ -32,12 +32,7 @@ export function QRScanner({ onClose, onDone, onSuccess }: QRScannerProps) {
     aspectRatio: 1.0,
   });
 
-  const scrollToDashboard = () => {
-    const dashboard = document.querySelector('#dashboard');
-    if (dashboard) {
-      dashboard.scrollIntoView({ behavior: 'smooth' });
-    }
-  };
+
 
   const safeStopScanner = useCallback(async () => {
     const scanner = scannerRef.current;
@@ -125,15 +120,7 @@ export function QRScanner({ onClose, onDone, onSuccess }: QRScannerProps) {
     onClose();
   };
 
-  const handleDone = async () => {
-    void safeStopScanner();
-    onClose();
-    if (onDone) {
-      onDone();
-    } else {
-      scrollToDashboard();
-    }
-  };
+
 
   const handleScanAgain = async () => {
     setScanResult(null);
