@@ -102,30 +102,28 @@ export function QRScanner({ onClose, onDone, onSuccess }: QRScannerProps) {
     });
 
     return () => {
-      if (scannerRef.current) {
-        scannerRef.current.stop().catch(() => {});
-        try {
-          scannerRef.current.clear?.();
-        } catch {
-          // ignore clear errors
-        }
-      }
-    };
-  }, [startScanner]);
+    safeStopScanner();   // ✅ use the same safe cleanup
+  };
+}, [startScanner, safeStopScanner]);
 
   const handleClose = async () => {
     void safeStopScanner();
     onClose();
   };
 
-  const handleDone = async () => {
-    void safeStopScanner();
-    if (onDone) {
-      onDone();
-    } else {
-      onClose();
-    }
-  };
+const handleDone = async () => {
+  await safeStopScanner();
+
+  // allow browser one frame to release camera + DOM
+  await new Promise((resolve) => setTimeout(resolve, 50));
+
+  if (onDone) {
+    onDone();
+  } else {
+    onClose();
+  }
+};
+
 
   const handleScanAgain = async () => {
     setScanResult(null);
