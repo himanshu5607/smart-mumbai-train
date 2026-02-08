@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Html5Qrcode } from 'html5-qrcode';
 import { Camera, X, CheckCircle, XCircle } from 'lucide-react';
 import { ticketService } from '@/services/ticketService';
@@ -6,10 +6,11 @@ import type { Ticket } from '@/lib/supabase';
 
 interface QRScannerProps {
   onClose: () => void;
+  onDone?: () => void;
   onSuccess?: (result: { valid: boolean; ticket?: Ticket; message: string }) => void;
 }
 
-export function QRScanner({ onClose, onSuccess }: QRScannerProps) {
+export function QRScanner({ onClose, onDone, onSuccess }: QRScannerProps) {
   const scannerRef = useRef<Html5Qrcode | null>(null);
   const onSuccessRef = useRef(onSuccess);
   const hasResultRef = useRef(false);
@@ -25,61 +26,64 @@ export function QRScanner({ onClose, onSuccess }: QRScannerProps) {
     return Math.max(240, Math.min(360, Math.floor(base * 0.6)));
   };
 
+  const scanConfig = () => ({
+    fps: 12,
+    qrbox: { width: getQrBoxSize(), height: getQrBoxSize() },
+    aspectRatio: 1.0,
+  });
+
   useEffect(() => {
     onSuccessRef.current = onSuccess;
   }, [onSuccess]);
+
+  const handleDecoded = useCallback(async (decodedText: string) => {
+    if (hasResultRef.current) return;
+    hasResultRef.current = true;
+    setIsScanning(false);
+    setIsProcessing(true);
+    setError(null);
+
+    try {
+      await scannerRef.current?.stop().catch(() => {});
+    } catch {
+      // ignore stop errors so we can still validate
+    }
+
+    try {
+      const result = await ticketService.validateTicket(decodedText);
+      setScanResult(result);
+      onSuccessRef.current?.(result);
+    } catch {
+      setError('Failed to validate ticket');
+      hasResultRef.current = false;
+    } finally {
+      setIsProcessing(false);
+    }
+  }, []);
+
+  const startScanner = useCallback(
+    async (scanner: Html5Qrcode) => {
+      if (hasResultRef.current) return;
+      await scanner.start(
+        { facingMode: 'environment' },
+        scanConfig(),
+        handleDecoded,
+        () => {
+          // QR code not found - continue scanning
+        }
+      );
+      setIsScanning(true);
+    },
+    [handleDecoded]
+  );
 
   useEffect(() => {
     const scanner = new Html5Qrcode('qr-reader');
     scannerRef.current = scanner;
 
-    const handleDecoded = async (decodedText: string) => {
-      if (hasResultRef.current) return;
-      hasResultRef.current = true;
-      setIsScanning(false);
-      setIsProcessing(true);
-      setError(null);
-
-      try {
-        await scanner.stop().catch(() => {});
-      } catch {
-        // ignore stop errors so we can still validate
-      }
-
-      try {
-        const result = await ticketService.validateTicket(decodedText);
-        setScanResult(result);
-        onSuccessRef.current?.(result);
-      } catch {
-        setError('Failed to validate ticket');
-        hasResultRef.current = false;
-      } finally {
-        setIsProcessing(false);
-      }
-    };
-
-    const startScanning = async () => {
-      if (hasResultRef.current) return;
-      try {
-        await scanner.start(
-          { facingMode: 'environment' },
-          {
-            fps: 12,
-            qrbox: { width: getQrBoxSize(), height: getQrBoxSize() },
-            aspectRatio: 1.0,
-          },
-          handleDecoded,
-          () => {
-            // QR code not found - continue scanning
-          }
-        );
-        setIsScanning(true);
-      } catch (err) {
-        setError('Failed to start camera. Please ensure camera permissions are granted.');
-      }
-    };
-
-    startScanning();
+    startScanner(scanner).catch(() => {
+      setError('Failed to start camera. Please ensure camera permissions are granted.');
+    });
 
     return () => {
       if (scannerRef.current) {
@@ -87,13 +91,24 @@ export function QRScanner({ onClose, onSuccess }: QRScannerProps) {
         scannerRef.current.clear?.().catch?.(() => {});
       }
     };
-  }, []);
+  }, [startScanner]);
 
   const handleClose = async () => {
     if (scannerRef.current) {
       await scannerRef.current.stop().catch(() => {});
     }
     onClose();
+  };
+
+  const handleDone = async () => {
+    if (scannerRef.current) {
+      await scannerRef.current.stop().catch(() => {});
+    }
+    if (onDone) {
+      onDone();
+    } else {
+      onClose();
+    }
   };
 
   const handleScanAgain = async () => {
@@ -103,40 +118,17 @@ export function QRScanner({ onClose, onSuccess }: QRScannerProps) {
     setIsProcessing(false);
     hasResultRef.current = false;
     
-    if (scannerRef.current) {
-      try {
-        await scannerRef.current.start(
-          { facingMode: 'environment' },
-          {
-            fps: 12,
-            qrbox: { width: getQrBoxSize(), height: getQrBoxSize() },
-            aspectRatio: 1.0,
-          },
-          async (decodedText) => {
-            if (hasResultRef.current) return;
-            hasResultRef.current = true;
-            setIsScanning(false);
-            setIsProcessing(true);
-            setError(null);
-            await scannerRef.current?.stop().catch(() => {});
-
-            try {
-              const result = await ticketService.validateTicket(decodedText);
-              setScanResult(result);
-              onSuccessRef.current?.(result);
-            } catch {
-              setError('Failed to validate ticket');
-              hasResultRef.current = false;
-            } finally {
-              setIsProcessing(false);
-            }
-          },
-          () => {}
-        );
-        setIsScanning(true);
-      } catch (err) {
-        setError('Failed to restart camera');
+    try {
+      if (scannerRef.current) {
+        await scannerRef.current.stop().catch(() => {});
+        await scannerRef.current.clear?.().catch?.(() => {});
       }
+
+      const freshScanner = new Html5Qrcode('qr-reader');
+      scannerRef.current = freshScanner;
+      await startScanner(freshScanner);
+    } catch {
+      setError('Failed to restart camera');
     }
   };
 
@@ -270,7 +262,7 @@ export function QRScanner({ onClose, onSuccess }: QRScannerProps) {
               Scan Another
             </button>
             <button
-              onClick={onClose}
+              onClick={handleDone}
               className="mt-3 w-full btn-outline"
             >
               Done

@@ -41,6 +41,11 @@ function AppContent() {
   };
 
   const handleGetAppClick = () => scrollToSection('#cta');
+  const handleDashboardScroll = () => scrollToSection('#dashboard');
+  const handleScannerDone = () => {
+    setShowQRScanner(false);
+    handleDashboardScroll();
+  };
 
   useEffect(() => {
     // Wait for all sections to mount before setting up global snap
@@ -121,6 +126,7 @@ function AppContent() {
       {showQRScanner && isAdmin && (
         <QRScanner
           onClose={() => setShowQRScanner(false)}
+          onDone={handleScannerDone}
           onSuccess={(result) => setLastScanResult(result)}
         />
       )}
