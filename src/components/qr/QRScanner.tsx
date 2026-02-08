@@ -32,6 +32,26 @@ export function QRScanner({ onClose, onDone, onSuccess }: QRScannerProps) {
     aspectRatio: 1.0,
   });
 
+  const safeStopScanner = useCallback(async () => {
+    const scanner = scannerRef.current;
+    if (!scanner) return;
+
+    try {
+      await Promise.race([
+        scanner.stop(),
+        new Promise((resolve) => setTimeout(resolve, 800)),
+      ]);
+    } catch {
+      // ignore stop errors/timeouts
+    }
+
+    try {
+      await scanner.clear?.().catch?.(() => {});
+    } catch {
+      // ignore clear errors
+    }
+  }, []);
+
   useEffect(() => {
     onSuccessRef.current = onSuccess;
   }, [onSuccess]);
@@ -43,11 +63,7 @@ export function QRScanner({ onClose, onDone, onSuccess }: QRScannerProps) {
     setIsProcessing(true);
     setError(null);
 
-    try {
-      await scannerRef.current?.stop().catch(() => {});
-    } catch {
-      // ignore stop errors so we can still validate
-    }
+    await safeStopScanner();
 
     try {
       const result = await ticketService.validateTicket(decodedText);
@@ -59,7 +75,7 @@ export function QRScanner({ onClose, onDone, onSuccess }: QRScannerProps) {
     } finally {
       setIsProcessing(false);
     }
-  }, []);
+  }, [safeStopScanner]);
 
   const startScanner = useCallback(
     async (scanner: Html5Qrcode) => {
@@ -94,16 +110,12 @@ export function QRScanner({ onClose, onDone, onSuccess }: QRScannerProps) {
   }, [startScanner]);
 
   const handleClose = async () => {
-    if (scannerRef.current) {
-      await scannerRef.current.stop().catch(() => {});
-    }
+    void safeStopScanner();
     onClose();
   };
 
   const handleDone = async () => {
-    if (scannerRef.current) {
-      await scannerRef.current.stop().catch(() => {});
-    }
+    void safeStopScanner();
     if (onDone) {
       onDone();
     } else {
@@ -120,10 +132,8 @@ export function QRScanner({ onClose, onDone, onSuccess }: QRScannerProps) {
     
     try {
       setIsScanning(false);
-      if (scannerRef.current) {
-        await scannerRef.current.stop().catch(() => {});
-        await scannerRef.current.clear?.().catch?.(() => {});
-      }
+      await safeStopScanner();
+      await new Promise((resolve) => setTimeout(resolve, 200));
 
       // Wait for the QR reader element to re-render
       for (let i = 0; i < 10; i += 1) {
