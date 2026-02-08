@@ -14,6 +14,13 @@ export function QRScanner({ onClose, onSuccess }: QRScannerProps) {
   const [isScanning, setIsScanning] = useState(false);
   const [scanResult, setScanResult] = useState<{ valid: boolean; ticket?: Ticket; message: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [manualCode, setManualCode] = useState('');
+
+  const getQrBoxSize = () => {
+    if (typeof window === 'undefined') return 280;
+    const base = Math.min(window.innerWidth, window.innerHeight);
+    return Math.max(240, Math.min(360, Math.floor(base * 0.6)));
+  };
 
   useEffect(() => {
     const scanner = new Html5Qrcode('qr-reader');
@@ -24,8 +31,9 @@ export function QRScanner({ onClose, onSuccess }: QRScannerProps) {
         await scanner.start(
           { facingMode: 'environment' },
           {
-            fps: 10,
-            qrbox: { width: 250, height: 250 },
+            fps: 12,
+            qrbox: { width: getQrBoxSize(), height: getQrBoxSize() },
+            aspectRatio: 1.0,
           },
           async (decodedText) => {
             // Stop scanning after successful read
@@ -70,14 +78,16 @@ export function QRScanner({ onClose, onSuccess }: QRScannerProps) {
   const handleScanAgain = async () => {
     setScanResult(null);
     setError(null);
+    setManualCode('');
     
     if (scannerRef.current) {
       try {
         await scannerRef.current.start(
           { facingMode: 'environment' },
           {
-            fps: 10,
-            qrbox: { width: 250, height: 250 },
+            fps: 12,
+            qrbox: { width: getQrBoxSize(), height: getQrBoxSize() },
+            aspectRatio: 1.0,
           },
           async (decodedText) => {
             await scannerRef.current?.stop();
@@ -100,6 +110,19 @@ export function QRScanner({ onClose, onSuccess }: QRScannerProps) {
     }
   };
 
+  const handleManualValidate = async () => {
+    const value = manualCode.trim();
+    if (!value) return;
+    setError(null);
+    try {
+      const result = await ticketService.validateTicket(value);
+      setScanResult(result);
+      onSuccess?.(result);
+    } catch {
+      setError('Failed to validate ticket');
+    }
+  };
+
   return (
     <div className="fixed inset-0 z-50 bg-black/90 flex flex-col items-center justify-center p-4">
       {/* Header */}
@@ -117,13 +140,13 @@ export function QRScanner({ onClose, onSuccess }: QRScannerProps) {
       </div>
 
       {/* Scanner or Result */}
-      <div className="w-full max-w-md">
+      <div className="w-full max-w-2xl">
         {!scanResult && !error && (
           <>
             {/* Scanner Viewport */}
             <div 
               id="qr-reader" 
-              className="w-full aspect-square rounded-2xl overflow-hidden relative"
+              className="w-full aspect-square rounded-2xl overflow-hidden relative bg-black/40 border border-white/10"
             />
             
             {/* Scanning Indicator */}
@@ -138,6 +161,28 @@ export function QRScanner({ onClose, onSuccess }: QRScannerProps) {
             <p className="text-center text-white/70 mt-4">
               Position the QR code within the frame to scan
             </p>
+            <p className="text-center text-white/40 text-xs mt-2">
+              Tip: Use another device to show the QR code if you are scanning on the same phone.
+            </p>
+
+            {/* Manual fallback */}
+            <div className="mt-4 p-4 rounded-xl bg-white/5 border border-white/10">
+              <p className="text-xs text-[#A7B0C8] mb-2">Trouble scanning? Paste the QR data here:</p>
+              <div className="flex flex-col sm:flex-row gap-2">
+                <input
+                  value={manualCode}
+                  onChange={(e) => setManualCode(e.target.value)}
+                  placeholder="Paste QR text or ticket ID"
+                  className="flex-1 px-3 py-2 rounded-lg bg-[#0B0F1C] border border-white/10 text-[#F4F6FF] text-sm outline-none focus:border-[#00F0FF]"
+                />
+                <button
+                  onClick={handleManualValidate}
+                  className="btn-primary px-4 py-2 text-sm"
+                >
+                  Confirm
+                </button>
+              </div>
+            </div>
           </>
         )}
 
