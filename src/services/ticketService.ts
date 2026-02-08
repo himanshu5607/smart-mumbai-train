@@ -95,16 +95,40 @@ export const ticketService = {
   // Validate ticket (for admin scanner)
   async validateTicket(qrData: string): Promise<{ valid: boolean; ticket?: Ticket; message: string }> {
     try {
-      const parsed = JSON.parse(qrData);
-      const ticketId = parsed.ticketId;
+      const rawText = qrData.trim();
+      let ticketId: string | null = null;
 
-      const { data: ticket, error } = await supabase
-        .from('tickets')
-        .select('*')
-        .eq('id', ticketId)
-        .single();
+      try {
+        const parsed = JSON.parse(rawText);
+        ticketId = parsed?.ticketId || parsed?.id || null;
+      } catch {
+        ticketId = rawText;
+      }
 
-      if (error || !ticket) {
+      let ticket: Ticket | null = null;
+
+      if (ticketId) {
+        const { data, error } = await supabase
+          .from('tickets')
+          .select('*')
+          .eq('id', ticketId)
+          .single();
+
+        if (!error && data) {
+          ticket = data;
+        }
+      }
+
+      if (!ticket) {
+        const { data } = await supabase
+          .from('tickets')
+          .select('*')
+          .eq('qr_code', rawText)
+          .single();
+        if (data) ticket = data;
+      }
+
+      if (!ticket) {
         return { valid: false, message: 'Invalid ticket' };
       }
 
@@ -120,7 +144,7 @@ export const ticketService = {
       await supabase
         .from('tickets')
         .update({ status: 'used', used_at: new Date().toISOString() })
-        .eq('id', ticketId);
+        .eq('id', ticket.id);
 
       return { valid: true, ticket, message: 'Ticket validated successfully' };
     } catch {
