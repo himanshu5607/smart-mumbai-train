@@ -10,7 +10,7 @@ interface QRScannerProps {
   onSuccess?: (result: { valid: boolean; ticket?: Ticket; message: string }) => void;
 }
 
-export function QRScanner({ onClose, onSuccess }: QRScannerProps) {
+export function QRScanner({ onClose, onDone, onSuccess }: QRScannerProps) {
   const scannerRef = useRef<Html5Qrcode | null>(null);
   const onSuccessRef = useRef(onSuccess);
   const hasResultRef = useRef(false);
@@ -31,8 +31,6 @@ export function QRScanner({ onClose, onSuccess }: QRScannerProps) {
     qrbox: { width: getQrBoxSize(), height: getQrBoxSize() },
     aspectRatio: 1.0,
   });
-
-
 
   const safeStopScanner = useCallback(async () => {
     const scanner = scannerRef.current;
@@ -120,7 +118,14 @@ export function QRScanner({ onClose, onSuccess }: QRScannerProps) {
     onClose();
   };
 
-
+  const handleDone = async () => {
+    void safeStopScanner();
+    if (onDone) {
+      onDone();
+    } else {
+      onClose();
+    }
+  };
 
   const handleScanAgain = async () => {
     setScanResult(null);
@@ -282,11 +287,11 @@ export function QRScanner({ onClose, onSuccess }: QRScannerProps) {
               Scan Another
             </button>
             <button
-                onClick={onClose}
-                className="mt-6 w-full btn-primary"
-              >
-                Done
-              </button>
+              onClick={handleDone}
+              className="mt-3 w-full btn-outline"
+            >
+              Done
+            </button>
           </div>
         )}
 
