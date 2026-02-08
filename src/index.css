@@ -50,6 +50,28 @@
   }
 }
 
+@layer base {
+  input::placeholder,
+  textarea::placeholder {
+    color: #A7B0C8;
+  }
+
+  input:-webkit-autofill,
+  input:-webkit-autofill:hover,
+  input:-webkit-autofill:focus,
+  textarea:-webkit-autofill,
+  textarea:-webkit-autofill:hover,
+  textarea:-webkit-autofill:focus,
+  select:-webkit-autofill,
+  select:-webkit-autofill:hover,
+  select:-webkit-autofill:focus {
+    -webkit-text-fill-color: #F4F6FF;
+    caret-color: #F4F6FF;
+    box-shadow: 0 0 0 1000px #0B0F1C inset;
+    transition: background-color 9999s ease-in-out 0s;
+  }
+}
+
 @layer utilities {
   .text-gradient {
     @apply bg-clip-text text-transparent;

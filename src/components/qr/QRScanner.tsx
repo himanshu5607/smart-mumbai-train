@@ -295,11 +295,11 @@ export function QRScanner({ onClose, onDone, onSuccess }: QRScannerProps) {
               Scan Another
             </button>
             <button
-              onClick={handleDone}
-              className="mt-3 w-full btn-outline"
-            >
-              Done
-            </button>
+                onClick={onClose}
+                className="mt-6 w-full btn-primary"
+              >
+                Done
+              </button>
           </div>
         )}
 
