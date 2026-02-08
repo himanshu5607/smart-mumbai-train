@@ -46,7 +46,7 @@ export function QRScanner({ onClose, onDone, onSuccess }: QRScannerProps) {
     }
 
     try {
-      await scanner.clear?.().catch?.(() => {});
+      scanner.clear?.();
     } catch {
       // ignore clear errors
     }
@@ -104,7 +104,11 @@ export function QRScanner({ onClose, onDone, onSuccess }: QRScannerProps) {
     return () => {
       if (scannerRef.current) {
         scannerRef.current.stop().catch(() => {});
-        scannerRef.current.clear?.().catch?.(() => {});
+        try {
+          scannerRef.current.clear?.();
+        } catch {
+          // ignore clear errors
+        }
       }
     };
   }, [startScanner]);
