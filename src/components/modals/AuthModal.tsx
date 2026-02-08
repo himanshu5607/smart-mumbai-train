@@ -35,7 +35,7 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-[1100] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
       <div className="bg-[#0B0F1C] rounded-3xl w-full max-w-md overflow-hidden">
         {/* Header */}
         <div className="p-4 border-b border-white/10 flex items-center justify-between">
