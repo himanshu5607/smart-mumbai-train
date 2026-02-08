@@ -27,6 +27,29 @@ export function QRScanner({ onClose, onSuccess }: QRScannerProps) {
     const scanner = new Html5Qrcode('qr-reader');
     scannerRef.current = scanner;
 
+    const handleDecoded = async (decodedText: string) => {
+      if (isProcessing || scanResult) return;
+      setIsScanning(false);
+      setIsProcessing(true);
+      setError(null);
+
+      try {
+        await scanner.stop().catch(() => {});
+      } catch {
+        // ignore stop errors so we can still validate
+      }
+
+      try {
+        const result = await ticketService.validateTicket(decodedText);
+        setScanResult(result);
+        onSuccess?.(result);
+      } catch {
+        setError('Failed to validate ticket');
+      } finally {
+        setIsProcessing(false);
+      }
+    };
+
     const startScanning = async () => {
       try {
         await scanner.start(
@@ -36,23 +59,7 @@ export function QRScanner({ onClose, onSuccess }: QRScannerProps) {
             qrbox: { width: getQrBoxSize(), height: getQrBoxSize() },
             aspectRatio: 1.0,
           },
-          async (decodedText) => {
-            // Stop scanning after successful read
-            await scanner.stop();
-            setIsScanning(false);
-            setIsProcessing(true);
-
-            // Validate ticket
-            try {
-              const result = await ticketService.validateTicket(decodedText);
-              setScanResult(result);
-              onSuccess?.(result);
-            } catch (err) {
-              setError('Failed to validate ticket');
-            } finally {
-              setIsProcessing(false);
-            }
-          },
+          handleDecoded,
           () => {
             // QR code not found - continue scanning
           }
@@ -95,15 +102,17 @@ export function QRScanner({ onClose, onSuccess }: QRScannerProps) {
             aspectRatio: 1.0,
           },
           async (decodedText) => {
-            await scannerRef.current?.stop();
+            if (isProcessing || scanResult) return;
             setIsScanning(false);
             setIsProcessing(true);
+            setError(null);
+            await scannerRef.current?.stop().catch(() => {});
 
             try {
               const result = await ticketService.validateTicket(decodedText);
               setScanResult(result);
               onSuccess?.(result);
-            } catch (err) {
+            } catch {
               setError('Failed to validate ticket');
             } finally {
               setIsProcessing(false);

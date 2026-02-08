@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { X, Train, MapPin, CreditCard, CheckCircle, Loader2 } from 'lucide-react';
 import { ticketService } from '@/services/ticketService';
 import { TicketQR } from '@/components/qr/TicketQR';
+import { supabase } from '@/lib/supabase';
 import type { Ticket } from '@/lib/supabase';
 
 interface TicketPurchaseModalProps {
@@ -52,6 +53,25 @@ export function TicketPurchaseModal({ isOpen, onClose }: TicketPurchaseModalProp
       setError(null);
     }
   }, [isOpen]);
+
+  useEffect(() => {
+    if (!purchasedTicket?.id) return;
+
+    const channel = supabase
+      .channel(`ticket_updates_${purchasedTicket.id}`)
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'tickets', filter: `id=eq.${purchasedTicket.id}` },
+        (payload) => {
+          setPurchasedTicket(payload.new as Ticket);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      channel.unsubscribe();
+    };
+  }, [purchasedTicket?.id]);
 
   const handlePurchase = async () => {
     setIsLoading(true);
@@ -233,6 +253,16 @@ export function TicketPurchaseModal({ isOpen, onClose }: TicketPurchaseModalProp
           {/* Step 4: Show QR Code */}
           {step === 4 && purchasedTicket && (
             <div className="text-center">
+              {purchasedTicket.status === 'used' && (
+                <div className="mb-5 p-4 rounded-2xl bg-green-500/10 border border-green-500/20">
+                  <h3 className="text-lg font-semibold text-green-400">
+                    Ticket Confirmed at Gate
+                  </h3>
+                  <p className="text-sm text-[#A7B0C8] mt-1">
+                    Your ticket has been scanned successfully.
+                  </p>
+                </div>
+              )}
               <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-4" />
               <h3 className="text-xl font-bold text-[#F4F6FF] mb-2">
                 Purchase Successful!
