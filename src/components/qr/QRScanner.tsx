@@ -11,6 +11,8 @@ interface QRScannerProps {
 
 export function QRScanner({ onClose, onSuccess }: QRScannerProps) {
   const scannerRef = useRef<Html5Qrcode | null>(null);
+  const onSuccessRef = useRef(onSuccess);
+  const hasResultRef = useRef(false);
   const [isScanning, setIsScanning] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [scanResult, setScanResult] = useState<{ valid: boolean; ticket?: Ticket; message: string } | null>(null);
@@ -24,11 +26,16 @@ export function QRScanner({ onClose, onSuccess }: QRScannerProps) {
   };
 
   useEffect(() => {
+    onSuccessRef.current = onSuccess;
+  }, [onSuccess]);
+
+  useEffect(() => {
     const scanner = new Html5Qrcode('qr-reader');
     scannerRef.current = scanner;
 
     const handleDecoded = async (decodedText: string) => {
-      if (isProcessing || scanResult) return;
+      if (hasResultRef.current) return;
+      hasResultRef.current = true;
       setIsScanning(false);
       setIsProcessing(true);
       setError(null);
@@ -42,15 +49,17 @@ export function QRScanner({ onClose, onSuccess }: QRScannerProps) {
       try {
         const result = await ticketService.validateTicket(decodedText);
         setScanResult(result);
-        onSuccess?.(result);
+        onSuccessRef.current?.(result);
       } catch {
         setError('Failed to validate ticket');
+        hasResultRef.current = false;
       } finally {
         setIsProcessing(false);
       }
     };
 
     const startScanning = async () => {
+      if (hasResultRef.current) return;
       try {
         await scanner.start(
           { facingMode: 'environment' },
@@ -75,9 +84,10 @@ export function QRScanner({ onClose, onSuccess }: QRScannerProps) {
     return () => {
       if (scannerRef.current) {
         scannerRef.current.stop().catch(() => {});
+        scannerRef.current.clear?.().catch?.(() => {});
       }
     };
-  }, [onSuccess]);
+  }, []);
 
   const handleClose = async () => {
     if (scannerRef.current) {
@@ -91,6 +101,7 @@ export function QRScanner({ onClose, onSuccess }: QRScannerProps) {
     setError(null);
     setManualCode('');
     setIsProcessing(false);
+    hasResultRef.current = false;
     
     if (scannerRef.current) {
       try {
@@ -102,7 +113,8 @@ export function QRScanner({ onClose, onSuccess }: QRScannerProps) {
             aspectRatio: 1.0,
           },
           async (decodedText) => {
-            if (isProcessing || scanResult) return;
+            if (hasResultRef.current) return;
+            hasResultRef.current = true;
             setIsScanning(false);
             setIsProcessing(true);
             setError(null);
@@ -111,9 +123,10 @@ export function QRScanner({ onClose, onSuccess }: QRScannerProps) {
             try {
               const result = await ticketService.validateTicket(decodedText);
               setScanResult(result);
-              onSuccess?.(result);
+              onSuccessRef.current?.(result);
             } catch {
               setError('Failed to validate ticket');
+              hasResultRef.current = false;
             } finally {
               setIsProcessing(false);
             }
@@ -132,12 +145,14 @@ export function QRScanner({ onClose, onSuccess }: QRScannerProps) {
     if (!value) return;
     setError(null);
     setIsProcessing(true);
+    hasResultRef.current = true;
     try {
       const result = await ticketService.validateTicket(value);
       setScanResult(result);
-      onSuccess?.(result);
+      onSuccessRef.current?.(result);
     } catch {
       setError('Failed to validate ticket');
+      hasResultRef.current = false;
     } finally {
       setIsProcessing(false);
     }
