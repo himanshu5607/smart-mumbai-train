@@ -50,6 +50,8 @@ export function QRScanner({ onClose, onDone, onSuccess }: QRScannerProps) {
     } catch {
       // ignore clear errors
     }
+
+    scannerRef.current = null;
   }, []);
 
   useEffect(() => {
@@ -102,27 +104,27 @@ export function QRScanner({ onClose, onDone, onSuccess }: QRScannerProps) {
     });
 
     return () => {
-    safeStopScanner();   // ✅ use the same safe cleanup
-  };
-}, [startScanner, safeStopScanner]);
+      safeStopScanner();   // ✅ use the same safe cleanup
+    };
+  }, [startScanner, safeStopScanner]);
 
   const handleClose = async () => {
     void safeStopScanner();
     onClose();
   };
 
-const handleDone = async () => {
-  await safeStopScanner();
+  const handleDone = async () => {
+    await safeStopScanner();
 
-  // allow browser one frame to release camera + DOM
-  await new Promise((resolve) => setTimeout(resolve, 50));
+    // allow browser one frame to release camera + DOM
+    await new Promise((resolve) => setTimeout(resolve, 50));
 
-  if (onDone) {
-    onDone();
-  } else {
-    onClose();
-  }
-};
+    if (onDone) {
+      onDone();
+    } else {
+      onClose();
+    }
+  };
 
 
   const handleScanAgain = async () => {
@@ -131,7 +133,7 @@ const handleDone = async () => {
     setManualCode('');
     setIsProcessing(false);
     hasResultRef.current = false;
-    
+
     try {
       setIsScanning(false);
       await safeStopScanner();
@@ -194,11 +196,11 @@ const handleDone = async () => {
         {!scanResult && !error && !isProcessing && (
           <>
             {/* Scanner Viewport */}
-            <div 
-              id="qr-reader" 
+            <div
+              id="qr-reader"
               className="w-full aspect-square rounded-2xl overflow-hidden relative bg-black/40 border border-white/10"
             />
-            
+
             {/* Scanning Indicator */}
             {isScanning && (
               <div className="flex items-center justify-center gap-2 mt-4">
@@ -206,7 +208,7 @@ const handleDone = async () => {
                 <span className="text-white/70 text-sm">Scanning...</span>
               </div>
             )}
-            
+
             {/* Instructions */}
             <p className="text-center text-white/70 mt-4">
               Position the QR code within the frame to scan
@@ -277,7 +279,7 @@ const handleDone = async () => {
                 <p className="text-[#A7B0C8]">{scanResult.message}</p>
               </>
             )}
-            
+
             <button
               onClick={handleScanAgain}
               className="mt-6 w-full btn-primary"

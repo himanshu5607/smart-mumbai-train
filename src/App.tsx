@@ -43,6 +43,7 @@ function AppContent() {
   const handleGetAppClick = () => scrollToSection('#cta');
   const handleDashboardScroll = () => scrollToSection('#dashboard');
   const handleScannerDone = () => {
+    setShowQRScanner(false);
     setTimeout(() => {
       const dashboard = document.querySelector('#dashboard') as HTMLElement | null;
       if (dashboard) {
@@ -61,7 +62,7 @@ function AppContent() {
       const pinned = ScrollTrigger.getAll()
         .filter(st => st.vars.pin)
         .sort((a, b) => a.start - b.start);
-      
+
       const maxScroll = ScrollTrigger.maxScroll(window);
       if (!maxScroll || pinned.length === 0) return;
 
@@ -100,14 +101,14 @@ function AppContent() {
     <div ref={mainRef} className="relative bg-[#070A12] min-h-screen">
       {/* Grain Overlay */}
       <div className="grain-overlay" />
-      
+
       {/* Navigation */}
-      <Navigation 
+      <Navigation
         onAuthClick={() => setShowAuthModal(true)}
         onTicketClick={() => setShowTicketModal(true)}
         onScanClick={() => setShowQRScanner(true)}
       />
-      
+
       {/* Sections */}
       <main className="relative">
         <HeroSection className="z-10" onGetAppClick={handleGetAppClick} />
@@ -129,7 +130,7 @@ function AppContent() {
       {/* Modals */}
       <AuthModal isOpen={showAuthModal} onClose={() => setShowAuthModal(false)} />
       <TicketPurchaseModal isOpen={showTicketModal} onClose={() => setShowTicketModal(false)} />
-      
+
       {/* QR Scanner (Admin only) */}
       {showQRScanner && isAdmin && (
         <QRScanner
